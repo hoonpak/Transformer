@@ -1,3 +1,5 @@
+special_tokens = ['<pad>', '<unk>', '<s>', '</s>']
+
 PAD = 0
 
 max_len = 128
