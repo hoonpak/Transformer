@@ -4,7 +4,7 @@ from torch import nn
 import info
 
 class EmbeddingWithPosition(nn.Module):
-    def __init__(self, num_embeddings, pos_max_len, embedding_dim, shared_parameter) -> None:
+    def __init__(self, num_embeddings, pos_max_len, embedding_dim, shared_parameter):
         super(EmbeddingWithPosition, self).__init__()
         self.dim = torch.tensor(embedding_dim)
         self.embedding = nn.Embedding(num_embeddings=num_embeddings, embedding_dim=embedding_dim, padding_idx=info.PAD)
@@ -33,14 +33,14 @@ class EmbeddingWithPosition(nn.Module):
         nn.init.xavier_uniform_(self.embedding.weight)
     
 class EncoderLayer(nn.Module):
-    def __init__(self,) -> None:
+    def __init__(self,):
         super(EncoderLayer, self).__init__()
         
     def forward(self, ):
         """"""
         
 class DecoderLayer(nn.Module):
-    def __init__(self, ) -> None:
+    def __init__(self, ):
         super(DecoderLayer, self).__init__()
         
     def forward(self, ):
