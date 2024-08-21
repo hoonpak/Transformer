@@ -34,7 +34,7 @@ class ScaleDotProductAttention(nn.Module):
             leftward_mask = (torch.triu(torch.ones_like(masked_info), 1) != 0)
             masked_info = masked_info | leftward_mask
         
-        attn_score = scaled_output.masked_fill_(masked_info, float("-inf")).softmax(-1).nan_to_num_(0) #N, L, L
+        attn_score = scaled_output.masked_fill_(masked_info, float("-inf")).softmax(-1).nan_to_num(0) #N, L, L
         output = torch.bmm(attn_score, value) #N, L, d_v
         return output
 
@@ -61,7 +61,7 @@ class MultiHeadAttention(nn.Module):
     def initialization(self):
         for attn_layer in self.attention_layers:
             attn_layer.initialization()
-        nn.init.xavier_uniform_(self.WO)
+        nn.init.xavier_uniform_(self.WO.weight)
         
 class LayerLorm(nn.Module):
     def __init__(self, d_model):
@@ -76,7 +76,6 @@ class LayerLorm(nn.Module):
         
     def initialization(self):
         nn.init.ones_(self.gain.weight)
-        nn.init.zeros_(self.gain.bias)
 
 class PositionWiseFeedForward(nn.Module):
     def __init__(self, d_model, d_ff):
@@ -96,6 +95,4 @@ class PositionWiseFeedForward(nn.Module):
     
     def initialization(self):
         nn.init.xavier_uniform_(self.inner_layer.weight)
-        nn.init.xavier_uniform_(self.inner_layer.bias)
         nn.init.xavier_uniform_(self.outer_layer.weight)
-        nn.init.xavier_uniform_(self.outer_layer.bias)

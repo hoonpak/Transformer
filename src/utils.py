@@ -8,3 +8,5 @@ def lrate(step_num, d_model, warmup_steps):
         step2 = torch.min(torch.tensor((torch.pow(torch.tensor(step_num),-0.5), step_num*torch.pow(torch.tensor(warmup_steps),-1.5))))
         learning_rate = step1*step2
     return learning_rate
+
+# def beam_search() CUDA_VISIBLE_DEVICES=0

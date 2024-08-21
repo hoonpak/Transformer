@@ -4,7 +4,7 @@ from layers import EmbeddingWithPosition, EncoderLayer, DecoderLayer
 class Encoder(nn.Module):
     def __init__(self, N, vocab_size, pos_max_len, d_model, head, d_k, d_v, d_ff, drop_rate, shared_parameter):
         super(Encoder, self).__init__()
-        self.emb_layer = EmbeddingWithPosition(num_embeddings=vocab_size, pos_max_len=pos_max_len, embedding_dim=d_model, drop_rate=drop_rate, shared_parameter=shared_parameter)
+        self.emb_layer = EmbeddingWithPosition(vocab_size=vocab_size, pos_max_len=pos_max_len, embedding_dim=d_model, drop_rate=drop_rate, shared_parameter=shared_parameter)
         self.encoder_layers = nn.ModuleList([EncoderLayer(head=head, d_model=d_model, d_k=d_k, d_v=d_v, d_ff=d_ff, drop_rate=drop_rate) for n in range(N)])
     
     def forward(self, x, masked_info):
@@ -25,7 +25,7 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, N, vocab_size, pos_max_len, d_model, head, d_k, d_v, d_ff, drop_rate, shared_parameter):
         super(Decoder, self).__init__()
-        self.emb_layer = EmbeddingWithPosition(num_embeddings=vocab_size, pos_max_len=pos_max_len, embedding_dim=d_model, drop_rate=drop_rate, shared_parameter=shared_parameter)
+        self.emb_layer = EmbeddingWithPosition(vocab_size=vocab_size, pos_max_len=pos_max_len, embedding_dim=d_model, drop_rate=drop_rate, shared_parameter=shared_parameter)
         self.decoder_layers = nn.ModuleList([DecoderLayer(head=head, d_model=d_model, d_k=d_k, d_v=d_v, d_ff=d_ff, drop_rate=drop_rate) for n in range(N)])
     
     def forward(self, x, src_tgt_masked_info, tgt_masked_info, encoder_output):

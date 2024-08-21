@@ -8,10 +8,9 @@ class EmbeddingWithPosition(nn.Module):
     def __init__(self, vocab_size, pos_max_len, embedding_dim, drop_rate, shared_parameter):
         super(EmbeddingWithPosition, self).__init__()
         self.dim_sqrt = torch.sqrt(torch.tensor(embedding_dim))
-        self.embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim, padding_idx=info.PAD)
+        self.embedding = shared_parameter
         self.dropout = nn.Dropout(p=drop_rate)
         
-        self.embedding.weight = shared_parameter
         self.pos_enc = self.get_pos_encoding(dim=embedding_dim, max_len=pos_max_len) #L, D
         
     def forward(self, x):
@@ -32,9 +31,6 @@ class EmbeddingWithPosition(nn.Module):
         pos_enc[:,0::2] = sin_pe
         pos_enc[:,1::2] = cos_pe
         return pos_enc #L, D
-    
-    # def initialization(self):
-    #     nn.init.xavier_uniform_(self.embedding.weight)
     
 class EncoderLayer(nn.Module):
     def __init__(self, head, d_model, d_k, d_v, d_ff, drop_rate):
