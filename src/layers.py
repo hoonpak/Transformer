@@ -14,8 +14,9 @@ class EmbeddingWithPosition(nn.Module):
         self.pos_enc = self.get_pos_encoding(dim=embedding_dim, max_len=pos_max_len) #L, D
         
     def forward(self, x):
+        N, L = x.shape
         emb = self.embedding(x)*self.dim_sqrt
-        emb += self.pos_enc
+        emb += self.pos_enc[:L,:]
         emb = self.dropout(emb)
         return emb #N, L, D
     

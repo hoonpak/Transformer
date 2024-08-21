@@ -5,7 +5,7 @@ import argparse
 
 import info
 from model import Transformer
-from data import CustomDataset
+from data import CustomDataset, collate_fn
 from utils import lrate
 
 from tokenizers import Tokenizer
@@ -38,6 +38,8 @@ if os.path.exists(file_path):
     print("load saved dataset")
     training_dataset = torch.load(file_path)
 else:
+    # src_train_data_path = "../data/test/test_en.txt"
+    # tgt_train_data_path = "../data/test/test_de.txt"
     src_train_data_path = "../data/training/training_en.txt"
     tgt_train_data_path = "../data/training/training_de.txt"
     training_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_train_data_path, tgt_path=tgt_train_data_path)
@@ -47,8 +49,8 @@ src_test_data_path = "../data/test/test_en.txt"
 tgt_test_data_path = "../data/test/test_de.txt"
 test_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_test_data_path, tgt_path=tgt_test_data_path)
 
-train_dataloader = DataLoader(dataset=training_dataset, batch_size=info.batch_size, shuffle=True)
-test_dataloader = DataLoader(dataset=test_dataset, batch_size=info.batch_size, shuffle=False)
+train_dataloader = DataLoader(dataset=training_dataset, batch_size=info.batch_size, shuffle=True, collate_fn=collate_fn)
+test_dataloader = DataLoader(dataset=test_dataset, batch_size=info.batch_size, shuffle=False, collate_fn=collate_fn)
 
 model = Transformer(N=hyper_params["N"], vocab_size=vocab_size, pos_max_len=info.max_len,
                     d_model=hyper_params["d_model"], head=hyper_params["head"], d_k=hyper_params["d_k"],
@@ -72,7 +74,7 @@ st = time.time()
 while True:
     for src_data, tgt_data, n_tokens in train_dataloader:
         torch.cuda.empty_cache()
-        token_counts += n_tokens.sum().detach().item()
+        token_counts += n_tokens
         src_data = src_data.to(info.device)
         tgt_data = tgt_data.to(info.device)
         
@@ -127,11 +129,18 @@ while True:
             test_flag = False
 
         if ((step+1) % 10000 == 0) | (step in [100000, 98500, 97000, 95500, 94000]):
-            torch.save({'step': step,
-                        'model': model,
-                        'model_state_dict': model.state_dict(),
-                        'optimizer_state_dict': optim.state_dict(),
-                        }, f"./save_model/{name}_CheckPoint.pth")
+            if step in [100000, 98500, 97000, 95500, 94000]:
+                torch.save({'step': step,
+                            'model': model,
+                            'model_state_dict': model.state_dict(),
+                            'optimizer_state_dict': optim.state_dict(),
+                            }, f"./save_model/{step}_{name}_CheckPoint.pth")
+            else:
+                torch.save({'step': step,
+                            'model': model,
+                            'model_state_dict': model.state_dict(),
+                            'optimizer_state_dict': optim.state_dict(),
+                            }, f"./save_model/{name}_CheckPoint.pth")
             
     if train_flag:
         torch.save({'step': step,

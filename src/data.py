@@ -89,7 +89,7 @@ class CustomDataset(Dataset):
         tgt_leng = len(tgt_sen)
         padded_src_sen = src_sen + [0]*(info.max_len - src_leng) # 128
         padded_tgt_sen = tgt_sen + [0]*(info.max_len - tgt_leng) # 128
-        return [torch.LongTensor(padded_src_sen), torch.LongTensor(padded_tgt_sen), (src_leng+tgt_leng)/2]
+        return [torch.LongTensor(padded_src_sen), torch.LongTensor(padded_tgt_sen), src_leng, tgt_leng]
     
     def get_tokenized_data_from_text_file(self, tokenizer, src_path, tgt_path):
         src_file = open(src_path, "r")
@@ -103,4 +103,22 @@ class CustomDataset(Dataset):
             if (len(src_tokenized_line) > (info.max_len-2)) | (len(tgt_tokenized_line) > (info.max_len-2)):
                 continue
             self.src.append(src_tokenized_line) 
-            self.tgt.append(tgt_tokenized_line) 
+            self.tgt.append(tgt_tokenized_line)
+            
+        self.src = sorted(self.src, key=lambda x: len(x))
+        self.tgt = sorted(self.tgt, key=lambda x: len(x))
+
+def collate_fn(batch):
+    src_sen, tgt_sen, src_len, tgt_len = zip(*batch)
+    
+    src_sen = torch.stack(src_sen, dim=0)  # (batch_size, src_seq_len)
+    tgt_sen = torch.stack(tgt_sen, dim=0)  # (batch_size, tgt_seq_len)
+
+    max_length = max(max(src_len), max(tgt_len))
+
+    src_sen = src_sen[:, :max_length]
+    tgt_sen = tgt_sen[:, :max_length]
+
+    total_tokens = (sum(src_len) + sum(tgt_len)) // 2
+
+    return src_sen, tgt_sen, total_tokens
