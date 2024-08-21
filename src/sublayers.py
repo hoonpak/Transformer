@@ -1,27 +1,36 @@
 import torch
 from torch import nn
-
-
-class ScaleDotProductAttention(nn.Module):
-    def __init__(self, d_model, d_k, d_v, is_masked):
-        super(ScaleDotProductAttention, self).__init__()
-        self.WQ = nn.Linear(d_model, d_k, bias=False)
-        self.WK = nn.Linear(d_model, d_k, bias=False)
-        self.WV = nn.Linear(d_model, d_v, bias=False)
+        
+class MultiHeadAttention(nn.Module):
+    def __init__(self, head, d_model, d_k, d_v, is_masked):
+        super(MultiHeadAttention, self).__init__()
+        assert d_model % head == 0
+        self.WQ = nn.Linear(d_model, d_model, bias=False)
+        self.WK = nn.Linear(d_model, d_model, bias=False)
+        self.WV = nn.Linear(d_model, d_model, bias=False)
+        self.WO = nn.Linear(head*d_v, d_model, bias=False)
+        
         self.scaler = torch.sqrt(torch.tensor(d_k))
         self.is_masked = is_masked
+        self.head = head
+        self.d_model = d_model
+        self.d_k = d_k
+        self.d_v = d_v
         
-    def forward(self, Q, K, V, masked_info):
+    def forward(self, Query, Key, Value, masked_info):
         """
         **INPUT SHAPE**
-        masked_info - N, L, L -> padding = True, else = False
+        masked_info - N, QL, L -> padding = True, else = False
         """
-        query = self.WQ(Q) #N, L, d_k
-        key = self.WK(K) #N, L, d_k
-        value = self.WV(V) #N, L, d_v
-        scaled_output = torch.bmm(query, key.permute(0,2,1))/self.scaler #N, L, L
+        QN, QL, QD = Query.shape
+        KN, KL, KD = Key.shape
+        VN, VL, VD = Value.shape
         
-        # masked_info = (torch.bmm(masked_info.unsqueeze(2), masked_info.unsqueeze(1)) == 0) #padding masking / N, L, L
+        query = self.WQ(Query).reshape(QN,QL,self.head,self.d_k).transpose(1,2) #N, L, D => N, L, H, D/H => N, H, L, D/H
+        key = self.WK(Key).reshape(KN,KL,self.head,self.d_k).transpose(1,2) #N, L, D => N, L, H, D/H => N, H, L, D/H
+        value = self.WV(Value).reshape(VN,VL,self.head,self.d_v).transpose(1,2) #N, L, D => N, L, H, D/H => N, H, L, D/H
+        
+        scaled_output = torch.matmul(query, key.transpose(-1,-2))/self.scaler #N, H, QL, D/H * N, H, D/H, L => N, H, QL, L
         
         if self.is_masked: #auto-regressive masking
             """
@@ -33,49 +42,31 @@ class ScaleDotProductAttention(nn.Module):
             """
             leftward_mask = (torch.triu(torch.ones_like(masked_info), 1) != 0)
             masked_info = masked_info | leftward_mask
+        masked_info = masked_info.unsqueeze(1).repeat(1,self.head,1,1) #N, QL, L => N, H, QL, L
         
-        attn_score = scaled_output.masked_fill_(masked_info, float("-inf")).softmax(-1).nan_to_num(0) #N, L, L
-        output = torch.bmm(attn_score, value) #N, L, d_v
-        return output
-
-    def initialization(self):
-        nn.init.xavier_uniform_(self.WQ.weight)
-        nn.init.xavier_uniform_(self.WK.weight)
-        nn.init.xavier_uniform_(self.WV.weight)
-        
-class MultiHeadAttention(nn.Module):
-    def __init__(self, head, d_model, d_k, d_v, is_masked):
-        super(MultiHeadAttention, self).__init__()
-        self.attention_layers = nn.ModuleList([ScaleDotProductAttention(d_model, d_k, d_v, is_masked) for h in range(head)])
-        self.WO = nn.Linear(head*d_v, d_model, bias=False)
-        
-    def forward(self, Q, K, V, masked_info):
-        head_outputs = []
-        for attn_layer in self.attention_layers:
-            head_out = attn_layer(Q, K, V, masked_info)
-            head_outputs.append(head_out)
-        multi_outputs = torch.cat(head_outputs, dim=-1) #N, L, d_v*h
+        attn_score = scaled_output.masked_fill_(masked_info, float("-inf")).softmax(-1).nan_to_num(0) #N, H, QL, L
+        multi_outputs = torch.matmul(attn_score, value).transpose(1,2).reshape(VN, QL, self.d_model)  #N, H, QL, L * N, H, L, D/H => N, H, QL, D/H => N, QL, H, D/H => N, QL, D
         output = self.WO(multi_outputs) #N, L, d_m
         return output
         
     def initialization(self):
-        for attn_layer in self.attention_layers:
-            attn_layer.initialization()
+        nn.init.xavier_uniform_(self.WQ.weight)
+        nn.init.xavier_uniform_(self.WK.weight)
+        nn.init.xavier_uniform_(self.WV.weight)
         nn.init.xavier_uniform_(self.WO.weight)
         
 class LayerLorm(nn.Module):
     def __init__(self, d_model):
         super(LayerLorm, self).__init__()
-        self.gain = nn.Linear(d_model, d_model)
+        self.gain_a = nn.Parameter(torch.ones(d_model))
+        self.gain_b = nn.Parameter(torch.zeros(d_model))
+        self.eps = 1e-6
         
     def forward(self, x):
         mean = x.mean(-1, keepdim=True)
         std = x.std(-1, keepdim=True)
-        output = self.gain(((x-mean)/(std+1e-6))) #N, L, d_m
+        output = self.gain_a*(x-mean)/(std+self.eps)+self.gain_b #N, L, d_m
         return output
-        
-    def initialization(self):
-        nn.init.ones_(self.gain.weight)
 
 class PositionWiseFeedForward(nn.Module):
     def __init__(self, d_model, d_ff):

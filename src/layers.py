@@ -54,7 +54,7 @@ class EncoderLayer(nn.Module):
          [ True,  True,  True,  True,  True],
          [ True,  True,  True,  True,  True]]
         """
-        MHA_output = self.drop1(self.MHA_layer(Q=x, K=x, V=x, masked_info=masked_info)) #N, L, d_m
+        MHA_output = self.drop1(self.MHA_layer(Query=x, Key=x, Value=x, masked_info=masked_info)) #N, L, d_m
         FF_input = self.LN_layer1(x+MHA_output) #N, L, d_m
         
         FF_output = self.drop2(self.PWFFN_layer(FF_input))
@@ -64,9 +64,7 @@ class EncoderLayer(nn.Module):
     
     def initialization(self):
         self.MHA_layer.initialization()
-        self.LN_layer1.initialization()
         self.PWFFN_layer.initialization()
-        self.LN_layer2.initialization()
         
 class DecoderLayer(nn.Module):
     def __init__(self, head, d_model, d_k, d_v, d_ff, drop_rate):
@@ -95,10 +93,10 @@ class DecoderLayer(nn.Module):
          [ True,  True,  True,  True,  True]]
         tgt_masked_info - N, L, L -> padding = 0, else = 1
         """
-        Masked_MHA_output = self.drop1(self.Masked_MHA_layer(Q=x, K=x, V=x, masked_info=tgt_masked_info)) #N, L, d_m
+        Masked_MHA_output = self.drop1(self.Masked_MHA_layer(Query=x, Key=x, Value=x, masked_info=tgt_masked_info)) #N, L, d_m
         MHA_input = self.LN_layer1(x+Masked_MHA_output) #N, L, d_m
         
-        MHA_output = self.drop2(self.MHA_layer(Q=MHA_input, K=encoder_output, V=encoder_output, masked_info=src_tgt_masked_info)) #N, L, d_m
+        MHA_output = self.drop2(self.MHA_layer(Query=MHA_input, Key=encoder_output, Value=encoder_output, masked_info=src_tgt_masked_info)) #N, L, d_m
         FF_input = self.LN_layer2(MHA_input+MHA_output) #N, L, d_m
         
         FF_output = self.drop3(self.PWFFN_layer(FF_input))
@@ -108,8 +106,5 @@ class DecoderLayer(nn.Module):
 
     def initialization(self):
         self.Masked_MHA_layer.initialization()
-        self.LN_layer1.initialization()
         self.MHA_layer.initialization()
-        self.LN_layer2.initialization()
         self.PWFFN_layer.initialization()
-        self.LN_layer3.initialization()

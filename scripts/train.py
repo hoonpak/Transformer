@@ -92,7 +92,7 @@ while True:
                 train_flag = True
                 break
             train_loss /= iter
-            print(f"Step: {step:<8} Iter: {iter:<4} Token Num: {token_counts:<9} lr: {optim.param_groups[0]['lr']:<7.1e} Train Loss: {train_loss:<8.4f} Time:{(time.time()-st)/3600:>6.4f} Hour")
+            print(f"Step: {step:<8} Iter: {iter:<4} Token Num: {token_counts:<9} lr: {optim.param_groups[0]['lr']:<9.1e} Train Loss: {train_loss:<8.4f} Time:{(time.time()-st)/3600:>6.4f} Hour")
             writer.add_scalars('loss', {'train_loss':train_loss}, step)
             writer.flush()
             token_counts = 0
@@ -126,7 +126,7 @@ while True:
             model.train()
             test_flag = False
 
-        if (step+1) % 10000 == 0:
+        if ((step+1) % 10000 == 0) | (step in [100000, 98500, 97000, 95500, 94000]):
             torch.save({'step': step,
                         'model': model,
                         'model_state_dict': model.state_dict(),

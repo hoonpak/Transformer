@@ -88,7 +88,7 @@ class CustomDataset(Dataset):
         src_leng = len(src_sen)
         tgt_leng = len(tgt_sen)
         padded_src_sen = src_sen + [0]*(info.max_len - src_leng) # 128
-        padded_tgt_sen = tgt_sen + [0]*(info.max_len - tgt_leng + 1) # 129
+        padded_tgt_sen = tgt_sen + [0]*(info.max_len - tgt_leng) # 128
         return [torch.LongTensor(padded_src_sen), torch.LongTensor(padded_tgt_sen), (src_leng+tgt_leng)/2]
     
     def get_tokenized_data_from_text_file(self, tokenizer, src_path, tgt_path):
@@ -97,9 +97,6 @@ class CustomDataset(Dataset):
         src_lines = src_file.readlines()
         tgt_lines = tgt_file.readlines()
         
-        # for idx in tqdm(range(len(src_lines)), desc="data tokenizing & loading"):
-            # src_tokenized_line = tokenizer.encode(src_lines[idx]).ids
-            # tgt_tokenized_line = tokenizer.encode(tgt_lines[idx]).ids
         for src_line, tgt_line in tqdm(zip(src_lines, tgt_lines), desc="data tokenizing & loading"):
             src_tokenized_line = tokenizer.encode(src_line).ids
             tgt_tokenized_line = tokenizer.encode(tgt_line).ids
