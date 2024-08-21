@@ -9,4 +9,3 @@ def lrate(step_num, d_model, warmup_steps):
         learning_rate = step1*step2
     return learning_rate
 
-# def beam_search() CUDA_VISIBLE_DEVICES=0
