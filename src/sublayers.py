@@ -44,9 +44,9 @@ class MultiHeadAttention(nn.Module):
             masked_info = masked_info | leftward_mask
         masked_info = masked_info.unsqueeze(1).repeat(1,self.head,1,1) #N, QL, L => N, H, QL, L
         
-        attn_score = scaled_output.masked_fill_(masked_info, float("-inf")).softmax(-1).nan_to_num(0) #N, H, QL, L
+        attn_score = scaled_output.masked_fill(masked_info, float("-inf")).softmax(-1).nan_to_num(0) #N, H, QL, L
         multi_outputs = torch.matmul(attn_score, value).transpose(1,2).reshape(VN, QL, self.d_model)  #N, H, QL, L * N, H, L, D/H => N, H, QL, D/H => N, QL, H, D/H => N, QL, D
-        output = self.WO(multi_outputs) #N, L, d_m
+        output = self.WO(multi_outputs) #N, QL, d_m
         return output
         
     def initialization(self):
@@ -75,13 +75,14 @@ class PositionWiseFeedForward(nn.Module):
         self.relu = nn.ReLU()
         self.outer_layer = nn.Linear(d_ff, d_model)
         
-    def forward(self, x):
+    def forward(self, x, mask_info):
         """
         **INPUT SHAPE**
         x -> N, L, d_model
         """
+        mask_info = (mask_info == 0)
         inner_output = self.relu(self.inner_layer(x))
-        outer_output = self.outer_layer(inner_output) #N, L, d_model
+        outer_output = self.outer_layer(inner_output).masked_fill(mask_info.unsqueeze(-1), 0) #N, L, d_model
         return outer_output
     
     def initialization(self):

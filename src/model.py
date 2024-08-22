@@ -21,18 +21,19 @@ class Transformer(nn.Module):
         self.vocab_size = vocab_size
         
     def forward(self, src_input, tgt_input):
-        isrc_m, src_mask = self.get_mask(src_input)
-        itgt_m, tgt_mask = self.get_mask(tgt_input)
-        src_tgt_mask = (torch.bmm(itgt_m.unsqueeze(2).float(), isrc_m.unsqueeze(1).float()) == 0) #N. TL, SL
-        encoder_output = self.encoder(x=src_input, masked_info=src_mask)
-        decoder_output = self.decoder(x=tgt_input, src_tgt_masked_info=src_tgt_mask, tgt_masked_info=tgt_mask, encoder_output=encoder_output)
+        pad_src_mask, attn_src_mask = self.get_mask(src_input)
+        pad_tgt_mask, attn_tgt_mask = self.get_mask(tgt_input)
+        src_tgt_mask = (torch.bmm(pad_tgt_mask.unsqueeze(2).float(), pad_src_mask.unsqueeze(1).float()) == 0) #N. TL, SL
+        encoder_output = self.encoder(x=src_input, masked_info=attn_src_mask, pad_mask=pad_src_mask)
+        decoder_output = self.decoder(x=tgt_input, src_tgt_masked_info=src_tgt_mask, tgt_masked_info=attn_tgt_mask,
+                                      pad_mask = pad_tgt_mask, encoder_output=encoder_output)
         predict = self.outputlayer(decoder_output).reshape(-1, self.vocab_size)
         return predict
     
     def get_mask(self, x):
         mask = torch.zeros(x.shape).to(info.device)
-        mask[x != 0] = 1.
-        mask_output = (torch.bmm(mask.unsqueeze(2), mask.unsqueeze(1)) == 0)
+        mask[x != 0] = 1. #N, L -> padding = 0, others = 1
+        mask_output = (torch.bmm(mask.unsqueeze(2), mask.unsqueeze(1)) == 0) #N, L, L
         return mask, mask_output
     
     def initialization(self):
