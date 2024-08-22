@@ -46,6 +46,8 @@ else:
 # tgt_train_data_path = "../data/test/test_de.txt"
 # training_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_train_data_path, tgt_path=tgt_train_data_path)
 
+print("Training dataset size: ",len(training_dataset.src),len(training_dataset.tgt))
+
 src_test_data_path = "../data/test/test_en.txt"
 tgt_test_data_path = "../data/test/test_de.txt"
 test_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_test_data_path, tgt_path=tgt_test_data_path)
@@ -66,6 +68,7 @@ writer = SummaryWriter(log_dir=f"./runs/{name}")
 iter = 0
 train_loss = 0
 step = 0
+epoch = 0
 step_threshold = 24000
 token_counts = 0
 train_flag = False
@@ -97,7 +100,7 @@ while True:
                 break
             if step % 10 == 0:
                 train_loss /= iter
-                print(f"Step: {step:<8} Iter: {iter:<4} Token Num: {token_counts:<7} lr: {optim.param_groups[0]['lr']:<9.1e} Train Loss: {train_loss:<8.4f} Time:{(time.time()-st)/3600:>6.4f} Hour")
+                print(f"Step: {epoch}/{step:<8} Iter: {iter:<4} Token Num: {token_counts:<7} lr: {optim.param_groups[0]['lr']:<9.1e} Train Loss: {train_loss:<8.4f} Time:{(time.time()-st)/3600:>6.4f} Hour")
             writer.add_scalars('loss', {'train_loss':train_loss}, step)
             writer.flush()
             token_counts = 0
@@ -119,7 +122,7 @@ while True:
                     test_cost += loss.detach().cpu().item()
                     num += 1
             test_cost /= num
-            print('='*10, f"Step: {step:<8} Test Loss: {test_cost:<10.4f} Time:{(time.time()-st)/3600:>6.4f} Hour", '='*10)
+            print('='*10, f"Step: {epoch}/{step:<8} Test Loss: {test_cost:<10.4f} Time:{(time.time()-st)/3600:>6.4f} Hour", '='*10)
             writer.add_scalars('cost', {'test_cost':test_cost}, step)
             writer.flush()
             torch.cuda.empty_cache()
@@ -139,7 +142,7 @@ while True:
                             'model_state_dict': model.state_dict(),
                             'optimizer_state_dict': optim.state_dict(),
                             }, f"./save_model/{name}_CheckPoint.pth")
-            
+    epoch += 1
     if train_flag:
         torch.save({'step': step,
                     'model': model,

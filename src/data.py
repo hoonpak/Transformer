@@ -38,8 +38,8 @@ class CustomDataset(Dataset):
             self.src.append(src_tokenized_line) 
             self.tgt.append(tgt_tokenized_line)
             
-        # self.src = sorted(self.src, key=lambda x: len(x))
-        # self.tgt = sorted(self.tgt, key=lambda x: len(x))
+        self.src = sorted(self.src, key=lambda x: len(x))
+        self.tgt = sorted(self.tgt, key=lambda x: len(x))
 
 def collate_fn(batch):
     src_sen, tgt_sen, src_len, tgt_len = zip(*batch)
