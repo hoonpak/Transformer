@@ -109,6 +109,7 @@ while True:
 
         if (step % 1000 == 0) & (test_flag):
             test_cost = 0
+            test_ppl = 0
             num = 0
             model.eval()
             with torch.no_grad():
@@ -118,9 +119,11 @@ while True:
                     predict = model.forward(src_input=src_data, tgt_input=tgt_data[:,:-1])
                     loss = criterion(predict, tgt_data[:,1:].reshape(-1))
                     test_cost += loss.detach().cpu().item()
+                    test_ppl += torch.exp(loss.detach().cpu().item())
                     num += 1
             test_cost /= num
-            print('='*10, f"Step: {epoch}/{step:<8} Test Loss: {test_cost:<10.4f} Time:{(time.time()-st)/3600:>6.4f} Hour", '='*10)
+            test_ppl /= num
+            print('='*10, f"Step: {epoch}/{step:<8} Test Loss: {test_cost:<10.4f} Test Loss: {test_ppl:<8.2f}  Time:{(time.time()-st)/3600:>6.4f} Hour", '='*10)
             writer.add_scalars('cost', {'test_cost':test_cost}, step)
             writer.flush()
             torch.cuda.empty_cache()
