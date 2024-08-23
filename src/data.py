@@ -117,4 +117,4 @@ def collate_fn(batch):
 #         tgt_leng = len(tgt_sen)
 #         padded_src_sen = src_sen + [0]*(info.max_len - src_leng)
 #         padded_tgt_sen = tgt_sen + [0]*(info.max_len - tgt_leng)
-#         return [torch.LongTensor(padded_src_sen), torch.LongTensor(padded_tgt_sen), (src_leng+tgt_leng)/2]
+#         return [torch.LongTensor(padded_src_sen), torch.LongTensor(padded_tgt_sen), (src_leng+tgt_leng)/2] 
