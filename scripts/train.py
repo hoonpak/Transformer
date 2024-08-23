@@ -32,19 +32,19 @@ tokenizer_path = "../data/ende_WMT14_Tokenizer.json"
 tokenizer = Tokenizer.from_file(tokenizer_path)
 vocab_size = tokenizer.get_vocab_size()
 
-# file_path = '../data/ende_training_custom_dataset.pt'
-# if os.path.exists(file_path):
-#     print("load saved dataset")
-#     training_dataset = torch.load(file_path)
-# else:
-#     src_train_data_path = "../data/training/training_en.txt"
-#     tgt_train_data_path = "../data/training/training_de.txt"
-#     training_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_train_data_path, tgt_path=tgt_train_data_path)
-#     torch.save(training_dataset, "../data/ende_training_custom_dataset.pt")
+file_path = '../data/ende_training_custom_dataset.pt'
+if os.path.exists(file_path):
+    print("load saved dataset")
+    training_dataset = torch.load(file_path)
+else:
+    src_train_data_path = "../data/training/training_en.txt"
+    tgt_train_data_path = "../data/training/training_de.txt"
+    training_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_train_data_path, tgt_path=tgt_train_data_path)
+    torch.save(training_dataset, "../data/ende_training_custom_dataset.pt")
 
-src_train_data_path = "../data/test/test_en.txt"
-tgt_train_data_path = "../data/test/test_de.txt"
-training_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_train_data_path, tgt_path=tgt_train_data_path)
+# src_train_data_path = "../data/test/test_en.txt"
+# tgt_train_data_path = "../data/test/test_de.txt"
+# training_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_train_data_path, tgt_path=tgt_train_data_path)
 
 print("Training dataset size: ",len(training_dataset.src),len(training_dataset.tgt))
 
@@ -67,8 +67,7 @@ iter = 0
 train_loss = 0
 step = 0
 epoch = 0
-step_threshold = 1
-# step_threshold = 24000
+step_threshold = 24000
 token_counts = 0
 train_flag = False
 test_flag = False
