@@ -32,19 +32,19 @@ tokenizer_path = "../data/ende_WMT14_Tokenizer.json"
 tokenizer = Tokenizer.from_file(tokenizer_path)
 vocab_size = tokenizer.get_vocab_size()
 
-file_path = '../data/ende_training_custom_dataset.pt'
-if os.path.exists(file_path):
-    print("load saved dataset")
-    training_dataset = torch.load(file_path)
-else:
-    src_train_data_path = "../data/training/training_en.txt"
-    tgt_train_data_path = "../data/training/training_de.txt"
-    training_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_train_data_path, tgt_path=tgt_train_data_path)
-    torch.save(training_dataset, "../data/ende_training_custom_dataset.pt")
+# file_path = '../data/ende_training_custom_dataset.pt'
+# if os.path.exists(file_path):
+#     print("load saved dataset")
+#     training_dataset = torch.load(file_path)
+# else:
+#     src_train_data_path = "../data/training/training_en.txt"
+#     tgt_train_data_path = "../data/training/training_de.txt"
+#     training_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_train_data_path, tgt_path=tgt_train_data_path)
+#     torch.save(training_dataset, "../data/ende_training_custom_dataset.pt")
 
-# src_train_data_path = "../data/test/test_en.txt"
-# tgt_train_data_path = "../data/test/test_de.txt"
-# training_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_train_data_path, tgt_path=tgt_train_data_path)
+src_train_data_path = "../data/test/test_en.txt"
+tgt_train_data_path = "../data/test/test_de.txt"
+training_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_train_data_path, tgt_path=tgt_train_data_path)
 
 print("Training dataset size: ",len(training_dataset.src),len(training_dataset.tgt))
 
@@ -58,9 +58,7 @@ test_dataloader = DataLoader(dataset=test_dataset, batch_size=info.batch_size, s
 model = Transformer(N=hyper_params["N"], vocab_size=vocab_size, pos_max_len=info.max_len,
                     d_model=hyper_params["d_model"], head=hyper_params["head"], d_k=hyper_params["d_k"],
                     d_v=hyper_params["d_v"], d_ff=hyper_params["d_ff"], drop_rate=hyper_params["dropout_rate"]).to(info.device)
-with torch.no_grad():
-    model.share_embedding.weight[0].fill_(0)
-criterion = CrossEntropyLoss(label_smoothing=hyper_params['label_smoothing'], ignore_index=info.PAD).to(info.device)
+criterion = CrossEntropyLoss(label_smoothing=hyper_params['label_smoothing']).to(info.device)
 optim = torch.optim.Adam(model.parameters(), lr=1, betas=(0.9, 0.98), eps=1e-9)
 lr_update = LambdaLR(optimizer=optim, lr_lambda=lambda step: lrate(step, hyper_params['d_model'], info.warmup_step))
 
@@ -69,7 +67,8 @@ iter = 0
 train_loss = 0
 step = 0
 epoch = 0
-step_threshold = 24000
+step_threshold = 1
+# step_threshold = 24000
 token_counts = 0
 train_flag = False
 test_flag = False
@@ -91,7 +90,7 @@ while True:
         iter += 1
         
         if token_counts >= step_threshold:
-            model.share_embedding.weight.grad[0].fill_(0)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optim.step()
             lr_update.step()
             optim.zero_grad()

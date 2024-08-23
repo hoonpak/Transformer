@@ -75,14 +75,13 @@ class PositionWiseFeedForward(nn.Module):
         self.relu = nn.ReLU()
         self.outer_layer = nn.Linear(d_ff, d_model)
         
-    def forward(self, x, mask_info):
+    def forward(self, x):
         """
         **INPUT SHAPE**
         x -> N, L, d_model
         """
-        mask_info = (mask_info == 0)
         inner_output = self.relu(self.inner_layer(x))
-        outer_output = self.outer_layer(inner_output).masked_fill(mask_info.unsqueeze(-1), 0) #N, L, d_model
+        outer_output = self.outer_layer(inner_output) #N, L, d_model
         return outer_output
     
     def initialization(self):

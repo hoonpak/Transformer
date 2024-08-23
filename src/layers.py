@@ -11,16 +11,12 @@ class EmbeddingWithPosition(nn.Module):
         self.embedding = shared_parameter
         self.dropout = nn.Dropout(p=drop_rate)
         self.LN_layer = LayerLorm(d_model=embedding_dim)
-        
-        self.pos_enc = self.get_pos_encoding(dim=embedding_dim, max_len=pos_max_len) #L, D
+
+        self.pos_enc = self.get_pos_encoding(dim=embedding_dim, max_len=pos_max_len).requires_grad_(False) #L, D
         
     def forward(self, x):
         N, L = x.shape
-        position = self.pos_enc[:L,:]
-        position = position.unsqueeze(0).repeat(N,1,1)
-        position[x == 0] = 0
-        emb = self.embedding(x)*self.dim_sqrt
-        emb += position.requires_grad_(False)
+        emb = self.embedding(x)*self.dim_sqrt + self.pos_enc[:L,:]
         emb = self.LN_layer(self.dropout(emb))
         return emb #N, L, D
     
@@ -39,7 +35,7 @@ class EmbeddingWithPosition(nn.Module):
     
 class EncoderLayer(nn.Module):
     def __init__(self, head, d_model, d_k, d_v, d_ff, drop_rate):
-        super(EncoderLayer, self).__init__()
+        super(EncoderLayer, self).__init__()        
         self.MHA_layer = MultiHeadAttention(head=head, d_model=d_model, d_k=d_k, d_v=d_v, is_masked=False)
         self.drop1 = nn.Dropout(p=drop_rate)
         self.LN_layer1 = LayerLorm(d_model=d_model)
@@ -48,7 +44,7 @@ class EncoderLayer(nn.Module):
         self.drop2 = nn.Dropout(p=drop_rate)
         self.LN_layer2 = LayerLorm(d_model=d_model)
 
-    def forward(self, x, masked_info, pad_mask):
+    def forward(self, x, masked_info):
         """
         **INPUT SHAPE**
         x - N, L, D
@@ -59,12 +55,11 @@ class EncoderLayer(nn.Module):
          [ True,  True,  True,  True,  True],
          [ True,  True,  True,  True,  True]]
         """
-        
         MHA_output = self.drop1(self.MHA_layer(Query=x, Key=x, Value=x, masked_info=masked_info)) #N, L, d_m
         FF_input = self.LN_layer1(x+MHA_output) #N, L, d_m
         
-        FF_output = self.drop2(self.PWFFN_layer(x=FF_input, mask_info=pad_mask))
-        encoder_output = self.LN_layer2(FF_input+FF_output) #N, L, d_m
+        FF_output = self.drop2(self.PWFFN_layer(x=FF_input))
+        encoder_output = self.LN_layer2(FF_input+FF_output)#N, L, d_m
         
         return encoder_output
     
@@ -87,7 +82,7 @@ class DecoderLayer(nn.Module):
         self.drop3 = nn.Dropout(p=drop_rate)
         self.LN_layer3 = LayerLorm(d_model=d_model)
         
-    def forward(self, x, src_tgt_masked_info, tgt_masked_info, pad_mask, encoder_output):
+    def forward(self, x, src_tgt_masked_info, tgt_masked_info, encoder_output):
         """
         **INPUT SHAPE**
         x - N, L, D
@@ -98,14 +93,14 @@ class DecoderLayer(nn.Module):
          [ True,  True,  True,  True,  True],
          [ True,  True,  True,  True,  True]]
         tgt_masked_info - N, L, L -> padding = 0, else = 1
-        """
+        """        
         Masked_MHA_output = self.drop1(self.Masked_MHA_layer(Query=x, Key=x, Value=x, masked_info=tgt_masked_info)) #N, L, d_m
         MHA_input = self.LN_layer1(x+Masked_MHA_output) #N, L, d_m
         
         MHA_output = self.drop2(self.MHA_layer(Query=MHA_input, Key=encoder_output, Value=encoder_output, masked_info=src_tgt_masked_info)) #N, L, d_m
         FF_input = self.LN_layer2(MHA_input+MHA_output) #N, L, d_m
         
-        FF_output = self.drop3(self.PWFFN_layer(x=FF_input, mask_info=pad_mask))
+        FF_output = self.drop3(self.PWFFN_layer(x=FF_input))
         decoder_output = self.LN_layer3(FF_input+FF_output) #N, L, d_m
         
         return decoder_output

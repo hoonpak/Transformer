@@ -47,10 +47,8 @@ def collate_fn(batch):
     src_sen = torch.stack(src_sen, dim=0)  # (batch_size, src_seq_len)
     tgt_sen = torch.stack(tgt_sen, dim=0)  # (batch_size, tgt_seq_len)
 
-    max_length = max(max(src_len), max(tgt_len))
-
-    src_sen = src_sen[:, :max_length]
-    tgt_sen = tgt_sen[:, :max_length]
+    src_sen = src_sen[:, :max(src_len)]
+    tgt_sen = tgt_sen[:, :max(tgt_len)]
 
     return src_sen, tgt_sen, src_len, tgt_len
 
