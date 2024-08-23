@@ -99,8 +99,8 @@ while True:
             if step % 10 == 0:
                 train_loss /= iter
                 print(f"Step: {epoch}/{step:<8} Iter: {iter:<4} Token Num: {token_counts:<7} lr: {optim.param_groups[0]['lr']:<9.1e} Train Loss: {train_loss:<8.4f} Time:{(time.time()-st)/3600:>6.4f} Hour")
-            writer.add_scalars('loss', {'train_loss':train_loss}, step)
-            writer.flush()
+                writer.add_scalars('loss', {'train_loss':train_loss}, step)
+                writer.flush()
             token_counts = 0
             iter = 0
             train_loss = 0
@@ -119,7 +119,7 @@ while True:
                     predict = model.forward(src_input=src_data, tgt_input=tgt_data[:,:-1])
                     loss = criterion(predict, tgt_data[:,1:].reshape(-1))
                     test_cost += loss.detach().cpu().item()
-                    test_ppl += torch.exp(loss.detach().cpu().item())
+                    test_ppl += torch.exp(loss.detach()).cpu().item()
                     num += 1
             test_cost /= num
             test_ppl /= num
