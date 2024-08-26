@@ -11,7 +11,7 @@ class Transformer(nn.Module):
 
         self.encoder = Encoder(N=N, vocab_size=vocab_size, pos_max_len=pos_max_len, d_model=d_model, head=head, 
                                d_k=d_k, d_v=d_v, d_ff=d_ff, drop_rate=drop_rate, shared_parameter=self.share_embedding)
-        self.decoder = Decoder(N=N, vocab_size=vocab_size, pos_max_len=pos_max_len-1, d_model=d_model, head=head, 
+        self.decoder = Decoder(N=N, vocab_size=vocab_size, pos_max_len=pos_max_len, d_model=d_model, head=head, 
                                d_k=d_k, d_v=d_v, d_ff=d_ff, drop_rate=drop_rate, shared_parameter=self.share_embedding)
         self.outputlayer = nn.Linear(d_model, vocab_size)
         self.outputlayer.weight = self.share_embedding.weight

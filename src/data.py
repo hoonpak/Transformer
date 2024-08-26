@@ -21,7 +21,7 @@ class CustomDataset(Dataset):
         src_leng = len(src_sen)
         tgt_leng = len(tgt_sen)
         padded_src_sen = src_sen + [0]*(info.max_len - src_leng) # 128
-        padded_tgt_sen = tgt_sen + [0]*(info.max_len - tgt_leng) # 128
+        padded_tgt_sen = tgt_sen + [0]*(info.max_len - tgt_leng + 1) # 129
         return [torch.LongTensor(padded_src_sen), torch.LongTensor(padded_tgt_sen), src_leng, tgt_leng]
     
     def get_tokenized_data_from_text_file(self, tokenizer, src_path, tgt_path):
@@ -37,20 +37,17 @@ class CustomDataset(Dataset):
                 continue
             self.src.append(src_tokenized_line) 
             self.tgt.append(tgt_tokenized_line)
-            
-        self.src = sorted(self.src, key=lambda x: len(x))
-        self.tgt = sorted(self.tgt, key=lambda x: len(x))
 
-def collate_fn(batch):
-    src_sen, tgt_sen, src_len, tgt_len = zip(*batch)
+# def collate_fn(batch):
+#     src_sen, tgt_sen, src_len, tgt_len = zip(*batch)
     
-    src_sen = torch.stack(src_sen, dim=0)  # (batch_size, src_seq_len)
-    tgt_sen = torch.stack(tgt_sen, dim=0)  # (batch_size, tgt_seq_len)
+#     src_sen = torch.stack(src_sen, dim=0)  # (batch_size, src_seq_len)
+#     tgt_sen = torch.stack(tgt_sen, dim=0)  # (batch_size, tgt_seq_len)
 
-    src_sen = src_sen[:, :max(src_len)]
-    tgt_sen = tgt_sen[:, :max(tgt_len)]
+#     src_sen = src_sen[:, :max(src_len)]
+#     tgt_sen = tgt_sen[:, :max(tgt_len)]
 
-    return src_sen, tgt_sen, src_len, tgt_len
+#     return src_sen, tgt_sen, src_len, tgt_len
 
 # class CustomDataset(Dataset):
 #     def __init__(self, tokenizer, src_path, tgt_path):
@@ -117,4 +114,4 @@ def collate_fn(batch):
 #         tgt_leng = len(tgt_sen)
 #         padded_src_sen = src_sen + [0]*(info.max_len - src_leng)
 #         padded_tgt_sen = tgt_sen + [0]*(info.max_len - tgt_leng)
-#         return [torch.LongTensor(padded_src_sen), torch.LongTensor(padded_tgt_sen), (src_leng+tgt_leng)/2] 
+#         return [torch.LongTensor(padded_src_sen), torch.LongTensor(padded_tgt_sen), (src_leng+tgt_leng)/2]

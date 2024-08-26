@@ -21,7 +21,7 @@ big_hyper_params = {"N": 6,
                     "dropout_rate": 0.3,
                     "label_smoothing": 0.1,
                     "train_steps": 300000}
-batch_size = 58
+batch_size = 64
 warmup_step = 4000
 ende_vocab_size = 37000
 enfr_vocab_size = 32000

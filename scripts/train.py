@@ -5,7 +5,7 @@ import argparse
 
 import info
 from model import Transformer
-from data import CustomDataset, collate_fn
+from data import CustomDataset
 from utils import lrate
 
 from tokenizers import Tokenizer
@@ -52,8 +52,10 @@ src_test_data_path = "../data/test/test_en.txt"
 tgt_test_data_path = "../data/test/test_de.txt"
 test_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_test_data_path, tgt_path=tgt_test_data_path)
 
-train_dataloader = DataLoader(dataset=training_dataset, batch_size=info.batch_size, shuffle=True, collate_fn=collate_fn)
-test_dataloader = DataLoader(dataset=test_dataset, batch_size=info.batch_size, shuffle=False, collate_fn=collate_fn)
+# train_dataloader = DataLoader(dataset=training_dataset, batch_size=info.batch_size, shuffle=True, collate_fn=collate_fn)
+# test_dataloader = DataLoader(dataset=test_dataset, batch_size=info.batch_size, shuffle=False, collate_fn=collate_fn)
+train_dataloader = DataLoader(dataset=training_dataset, batch_size=info.batch_size, shuffle=True)
+test_dataloader = DataLoader(dataset=test_dataset, batch_size=info.batch_size, shuffle=False)
 
 model = Transformer(N=hyper_params["N"], vocab_size=vocab_size, pos_max_len=info.max_len,
                     d_model=hyper_params["d_model"], head=hyper_params["head"], d_k=hyper_params["d_k"],
@@ -64,6 +66,7 @@ lr_update = LambdaLR(optimizer=optim, lr_lambda=lambda step: lrate(step, hyper_p
 
 writer = SummaryWriter(log_dir=f"./runs/{name}")
 iter = 0
+avg_iter = 0
 train_loss = 0
 step = 0
 epoch = 0
@@ -89,21 +92,23 @@ while True:
         iter += 1
         
         if token_counts >= step_threshold:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optim.step()
             lr_update.step()
             optim.zero_grad()
             if step == hyper_params["train_steps"]:
                 train_flag = True
                 break
-            if step % 10 == 0:
-                train_loss /= iter
+            if (step % 20 == 0) & (step != 0):
+                train_loss /= avg_iter
                 print(f"Step: {epoch}/{step:<8} Iter: {iter:<4} Token Num: {token_counts:<7} lr: {optim.param_groups[0]['lr']:<9.1e} Train Loss: {train_loss:<8.4f} Time:{(time.time()-st)/3600:>6.4f} Hour")
                 writer.add_scalars('loss', {'train_loss':train_loss}, step)
                 writer.flush()
+                train_loss = 0
+                avg_iter = 0
             token_counts = 0
+            avg_iter += iter
             iter = 0
-            train_loss = 0
             step += 1
             test_flag = True
 
@@ -123,7 +128,7 @@ while True:
                     num += 1
             test_cost /= num
             test_ppl /= num
-            print('='*10, f"Step: {epoch}/{step:<8} Test Loss: {test_cost:<10.4f} Test Loss: {test_ppl:<8.2f}  Time:{(time.time()-st)/3600:>6.4f} Hour", '='*10)
+            print('='*10, f"Step: {epoch}/{step:<8} Test Loss: {test_cost:<10.4f} Test Ppl: {test_ppl:<8.2f}  Time:{(time.time()-st)/3600:>6.4f} Hour", '='*10)
             writer.add_scalars('cost', {'test_cost':test_cost}, step)
             writer.flush()
             torch.cuda.empty_cache()
@@ -163,4 +168,3 @@ with torch.no_grad():
         num += 1
 test_cost /= num
 print('#'*10, f"Step: {step:<10} Test Loss: {test_cost:<10.4f} Time:{(time.time()-st)/3600:>6.4f} Hour", '#'*10)
-            
