@@ -25,18 +25,56 @@ class CustomDataset(Dataset):
         return [torch.LongTensor(padded_src_sen), torch.LongTensor(padded_tgt_sen), src_leng, tgt_leng]
     
     def get_tokenized_data_from_text_file(self, tokenizer, src_path, tgt_path):
-        src_file = open(src_path, "r")
-        tgt_file = open(tgt_path, "r")
-        src_lines = src_file.readlines()
-        tgt_lines = tgt_file.readlines()
+        with open(src_path, "r") as file:
+            src_lines = file.readlines()
+        with open(tgt_path, "r") as file:
+            tgt_lines = file.readlines()
         
         for src_line, tgt_line in tqdm(zip(src_lines, tgt_lines), desc="data tokenizing & loading"):
             src_tokenized_line = tokenizer.encode(src_line).ids
             tgt_tokenized_line = tokenizer.encode(tgt_line).ids
-            if (len(src_tokenized_line) > (info.max_len-2)) | (len(tgt_tokenized_line) > (info.max_len-2)):
+            if (len(src_tokenized_line) > info.max_len) | (len(tgt_tokenized_line) > info.max_len-2):
                 continue
             self.src.append(src_tokenized_line) 
             self.tgt.append(tgt_tokenized_line)
+
+class CustomENFRDataset(Dataset):
+    def __init__(self, tokenizer, src_path, tgt_path):
+        self.src = []
+        self.tgt = []
+        self.tokenizer = tokenizer
+        self.get_filtered_data_from_text_file(src_path=src_path, tgt_path=tgt_path)
+        self.length = len(self.src)
+        
+    def __len__(self):
+        return self.length
+        
+    def __getitem__(self, index):
+        src_sen = self.tokenizer.encode(self.src[index]).ids
+        tgt_sen = self.tokenizer.encode(self.tgt[index]).ids
+        src_leng = len(src_sen)
+        tgt_leng = len(tgt_sen)
+        padded_src_sen = src_sen + [0]*(info.max_len - src_leng) # 128
+        padded_tgt_sen = tgt_sen + [0]*(info.max_len - tgt_leng + 1) # 129
+        return [torch.LongTensor(padded_src_sen), torch.LongTensor(padded_tgt_sen), src_leng, tgt_leng]
+    
+    def get_filtered_data_from_text_file(self, src_path, tgt_path):
+        src_file = open(src_path, "r")
+        tgt_file = open(tgt_path, "r")
+        
+        data_size = 40842333
+        for tmp_idx in tqdm(range(data_size), desc="Filtering..."):
+            src_line = src_file.readline()
+            tgt_line = tgt_file.readline()
+            tmp_src_ids = self.tokenizer.encode(src_line).ids
+            tmp_tgt_ids = self.tokenizer.encode(tgt_line).ids
+            if (len(tmp_src_ids) > info.max_len) | (len(tmp_tgt_ids) > info.max_len) :
+                continue                   
+            self.src.append(src_line)
+            self.tgt.append(tgt_line)
+            
+        src_file.close()
+        tgt_file.close()
 
 # def collate_fn(batch):
 #     src_sen, tgt_sen, src_len, tgt_len = zip(*batch)

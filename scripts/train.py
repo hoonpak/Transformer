@@ -5,7 +5,7 @@ import argparse
 
 import info
 from model import Transformer
-from data import CustomDataset
+from data import CustomDataset, CustomENFRDataset
 from utils import lrate
 
 from tokenizers import Tokenizer
@@ -20,40 +20,50 @@ from torch.utils.tensorboard import SummaryWriter
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", default="base", choices=["base", "big"])
+parser.add_argument("--lang", default="ende", choices=["ende", "enfr"])
 parser.add_argument("--device", default="cuda:0")
 parser.add_argument("--version")
 option = parser.parse_args()
 
-name = option.version + "_" + option.model
+lang = option.lang
+name = lang + option.version + "_" + option.model
 hyper_params = getattr(info, f"{option.model}_hyper_params")
 info.device = option.device
 
-tokenizer_path = "../data/ende_WMT14_Tokenizer.json"
+tokenizer_path = f"../data/{lang}_WMT14_Tokenizer.json"
 tokenizer = Tokenizer.from_file(tokenizer_path)
 vocab_size = tokenizer.get_vocab_size()
 
-file_path = '../data/ende_training_custom_dataset.pt'
+file_path = f'../data/{lang}_training_custom_dataset.pt'
 if os.path.exists(file_path):
     print("load saved dataset")
     training_dataset = torch.load(file_path)
 else:
-    src_train_data_path = "../data/training/training_en.txt"
-    tgt_train_data_path = "../data/training/training_de.txt"
-    training_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_train_data_path, tgt_path=tgt_train_data_path)
-    torch.save(training_dataset, "../data/ende_training_custom_dataset.pt")
+    if lang == "ende":
+        src_train_data_path = "../data/training/training_en.txt"
+        tgt_train_data_path = "../data/training/training_de.txt"
+        training_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_train_data_path, tgt_path=tgt_train_data_path)
+        torch.save(training_dataset, f"../data/{lang}_training_custom_dataset.pt")
+    elif lang == "enfr":
+        src_train_data_path = "../data/training/training_enfr_en.txt"
+        tgt_train_data_path = "../data/training/training_enfr_fr.txt"
+        training_dataset = CustomENFRDataset(tokenizer=tokenizer, src_path=src_train_data_path, tgt_path=tgt_train_data_path)
+        torch.save(training_dataset, f"../data/{lang}_training_custom_dataset.pt")
 
 # src_train_data_path = "../data/test/test_en.txt"
 # tgt_train_data_path = "../data/test/test_de.txt"
 # training_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_train_data_path, tgt_path=tgt_train_data_path)
 
 print("Training dataset size: ",len(training_dataset.src),len(training_dataset.tgt))
+if lang == "ende":
+    src_test_data_path = "../data/test/test_en.txt"
+    tgt_test_data_path = "../data/test/test_de.txt"
+elif lang == "enfr":
+    src_test_data_path = "../data/test/test_enfr_en.txt"
+    tgt_test_data_path = "../data/test/test_enfr_fr.txt"
+    
+test_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_test_data_path, tgt_path=tgt_test_data_path)    
 
-src_test_data_path = "../data/test/test_en.txt"
-tgt_test_data_path = "../data/test/test_de.txt"
-test_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_test_data_path, tgt_path=tgt_test_data_path)
-
-# train_dataloader = DataLoader(dataset=training_dataset, batch_size=info.batch_size, shuffle=True, collate_fn=collate_fn)
-# test_dataloader = DataLoader(dataset=test_dataset, batch_size=info.batch_size, shuffle=False, collate_fn=collate_fn)
 train_dataloader = DataLoader(dataset=training_dataset, batch_size=info.batch_size, shuffle=True)
 test_dataloader = DataLoader(dataset=test_dataset, batch_size=info.batch_size, shuffle=False)
 

@@ -187,9 +187,10 @@ if __name__ == "__main__":
 
     beam_predict = beam_search(test_dataset.src, model, option.device, beam_size=4)
     beam_bleu_score = bleu_score(beam_predict, test_dataset.tgt)
-    print(' '.join(tokenizer.decode(beam_predict[0])))
-    print(' '.join(tokenizer.decode(test_dataset.tgt[0][1:-1])))
-    print("="*50)
+    print("="*100)
+    print(tokenizer.decode(beam_predict[0]))
+    print(tokenizer.decode(test_dataset.tgt[0][1:-1]))
+    print("="*100)
     # print(' '.join(tokenizer.decode(beam_predict[-1])))
     # print(' '.join(tokenizer.decode(test_dataset.tgt[-1][1:-1])))
     # print("="*50)
