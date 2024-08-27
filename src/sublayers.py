@@ -45,6 +45,7 @@ class MultiHeadAttention(nn.Module):
         masked_info = masked_info.unsqueeze(1).repeat(1,self.head,1,1) #N, QL, L => N, H, QL, L
         
         attn_score = scaled_output.masked_fill(masked_info, float("-inf")).softmax(-1).nan_to_num(0) #N, H, QL, L
+        # attn_score = scaled_output.masked_fill(masked_info, -1e9).softmax(-1) #N, H, QL, L
         multi_outputs = torch.matmul(attn_score, value).transpose(1,2).reshape(VN, QL, self.d_model)  #N, H, QL, L * N, H, L, D/H => N, H, QL, D/H => N, QL, H, D/H => N, QL, D
         output = self.WO(multi_outputs) #N, QL, d_m
         return output

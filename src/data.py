@@ -66,6 +66,10 @@ class CustomENFRDataset(Dataset):
         for tmp_idx in tqdm(range(data_size), desc="Filtering..."):
             src_line = src_file.readline()
             tgt_line = tgt_file.readline()
+            if len(src_line) == 0:
+                if len(tgt_line) != 0:
+                    print("WARNING! Please make sure the data is well paired.")
+                break
             tmp_src_ids = self.tokenizer.encode(src_line).ids
             tmp_tgt_ids = self.tokenizer.encode(tgt_line).ids
             if (len(tmp_src_ids) > info.max_len) | (len(tmp_tgt_ids) > info.max_len) :
