@@ -5,13 +5,13 @@ import info
 from sublayers import MultiHeadAttention, LayerLorm, PositionWiseFeedForward
 
 class EmbeddingWithPosition(nn.Module):
-    def __init__(self, vocab_size, pos_max_len, embedding_dim, drop_rate, shared_parameter):
+    def __init__(self, vocab_size, pos_max_len, embedding_dim, drop_rate, shared_parameter, device):
         super(EmbeddingWithPosition, self).__init__()
         self.dim_sqrt = torch.sqrt(torch.tensor(embedding_dim))
         self.embedding = shared_parameter
         self.dropout = nn.Dropout(p=drop_rate)
         self.LN_layer = LayerLorm(d_model=embedding_dim)
-
+        self.device = device
         self.pos_enc = self.get_pos_encoding(dim=embedding_dim, max_len=pos_max_len).requires_grad_(False) #L, D
         
     def forward(self, x):
@@ -21,9 +21,9 @@ class EmbeddingWithPosition(nn.Module):
         return emb #N, L, D
     
     def get_pos_encoding(self, dim, max_len):
-        dim_loc = torch.arange(start=0, end=dim, step=2, device=info.device)
-        pos_loc = torch.arange(start=0, end=max_len, step=1, device=info.device)
-        pos_enc = torch.zeros((max_len, dim), device=info.device)
+        dim_loc = torch.arange(start=0, end=dim, step=2, device=self.device)
+        pos_loc = torch.arange(start=0, end=max_len, step=1, device=self.device)
+        pos_enc = torch.zeros((max_len, dim), device=self.device)
         
         denominator = torch.exp((-(dim_loc/dim))*(torch.log(torch.tensor(10000))))
         sin_pe = torch.sin(pos_loc.unsqueeze(1)*denominator.unsqueeze(0))

@@ -55,6 +55,7 @@ else:
 # training_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_train_data_path, tgt_path=tgt_train_data_path)
 
 print("Training dataset size: ",len(training_dataset.src),len(training_dataset.tgt))
+
 if lang == "ende":
     src_test_data_path = "../data/test/test_en.txt"
     tgt_test_data_path = "../data/test/test_de.txt"

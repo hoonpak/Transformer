@@ -17,9 +17,6 @@ import argparse
 from tqdm import tqdm
 from collections import Counter
 
-
-
-
 def get_ngram(n, sentence):
     ngrams = []
     for i in range(len(sentence)-n+1):

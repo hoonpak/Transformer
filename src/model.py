@@ -4,15 +4,16 @@ from module import Encoder, Decoder
 import info
 
 class Transformer(nn.Module):
-    def __init__(self, N, vocab_size, pos_max_len, d_model, head, d_k, d_v, d_ff, drop_rate):
+    def __init__(self, N, vocab_size, pos_max_len, d_model, head, d_k, d_v, d_ff, drop_rate, device):
         super(Transformer, self).__init__()
         self.share_embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=d_model)
+        self.device = device
         nn.init.xavier_uniform_(self.share_embedding.weight)
 
         self.encoder = Encoder(N=N, vocab_size=vocab_size, pos_max_len=pos_max_len, d_model=d_model, head=head, 
-                               d_k=d_k, d_v=d_v, d_ff=d_ff, drop_rate=drop_rate, shared_parameter=self.share_embedding)
+                               d_k=d_k, d_v=d_v, d_ff=d_ff, drop_rate=drop_rate, shared_parameter=self.share_embedding, device=device)
         self.decoder = Decoder(N=N, vocab_size=vocab_size, pos_max_len=pos_max_len, d_model=d_model, head=head, 
-                               d_k=d_k, d_v=d_v, d_ff=d_ff, drop_rate=drop_rate, shared_parameter=self.share_embedding)
+                               d_k=d_k, d_v=d_v, d_ff=d_ff, drop_rate=drop_rate, shared_parameter=self.share_embedding, device=device)
         self.outputlayer = nn.Linear(d_model, vocab_size)
         self.outputlayer.weight = self.share_embedding.weight
         
@@ -30,7 +31,7 @@ class Transformer(nn.Module):
         return predict
     
     def get_mask(self, x):
-        mask = torch.zeros(x.shape).to(info.device)
+        mask = torch.zeros(x.shape).to(self.device)
         mask[x != 0] = 1. #N, L -> padding = 0, others = 1
         mask_output = (torch.bmm(mask.unsqueeze(2), mask.unsqueeze(1)) == 0) #N, L, L
         return mask, mask_output
