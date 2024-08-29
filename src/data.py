@@ -33,7 +33,7 @@ class CustomDataset(Dataset):
         for src_line, tgt_line in tqdm(zip(src_lines, tgt_lines), desc="data tokenizing & loading"):
             src_tokenized_line = tokenizer.encode(src_line).ids
             tgt_tokenized_line = tokenizer.encode(tgt_line).ids
-            if (len(src_tokenized_line) > info.max_len) | (len(tgt_tokenized_line) > info.max_len-2):
+            if (len(src_tokenized_line) > info.max_len) | (len(tgt_tokenized_line) > info.max_len):
                 continue
             self.src.append(src_tokenized_line) 
             self.tgt.append(tgt_tokenized_line)
