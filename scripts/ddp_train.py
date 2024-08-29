@@ -23,7 +23,7 @@ from torch.utils.data.distributed import DistributedSampler
 
 def setup(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12356'
+    os.environ['MASTER_PORT'] = '12355'
     torch.manual_seed(42) 
     dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
@@ -118,8 +118,8 @@ def train_ddp(rank, world_size, tokenizer, hyper_params, name, lang, test_datalo
                         print(f"Step: {epoch}/{step:<8} Iter: {iteration:<4} Token Num: {token_counts:<7} lr: {optim.param_groups[0]['lr']:<9.1e} Train Loss: {train_loss:<8.4f} Time:{(time.time()-st)/3600:>6.4f} Hour")
                         writer.add_scalars('loss', {'train_loss':train_loss}, step)
                         writer.flush()
-                        train_loss = 0
-                        avg_iter = 0
+                train_loss = 0
+                avg_iter = 0
                 token_counts = 0
                 iteration = 0
                 step += 1
