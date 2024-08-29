@@ -42,7 +42,8 @@ class MultiHeadAttention(nn.Module):
             """
             leftward_mask = (torch.triu(torch.ones_like(masked_info), 1) != 0)
             masked_info = masked_info | leftward_mask
-        masked_info = masked_info.unsqueeze(1).repeat(1,self.head,1,1) #N, QL, L => N, H, QL, L
+        # masked_info = masked_info.unsqueeze(1).repeat(1,self.head,1,1) #N, QL, L => N, H, QL, L
+        masked_info = masked_info.unsqueeze(1) #N, 1, QL, L
         
         attn_score = scaled_output.masked_fill(masked_info, float("-inf")).softmax(-1).nan_to_num(0) #N, H, QL, L
         # attn_score = scaled_output.masked_fill(masked_info, -1e9).softmax(-1) #N, H, QL, L
@@ -56,9 +57,9 @@ class MultiHeadAttention(nn.Module):
         nn.init.xavier_uniform_(self.WV.weight)
         nn.init.xavier_uniform_(self.WO.weight)
         
-class LayerLorm(nn.Module):
+class LayerNorm(nn.Module):
     def __init__(self, d_model):
-        super(LayerLorm, self).__init__()
+        super(LayerNorm, self).__init__()
         self.gain_a = nn.Parameter(torch.ones(d_model))
         self.gain_b = nn.Parameter(torch.zeros(d_model))
         self.eps = 1e-6

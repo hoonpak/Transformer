@@ -2,7 +2,7 @@ import torch
 from torch import nn
 
 import info
-from sublayers import MultiHeadAttention, LayerLorm, PositionWiseFeedForward
+from sublayers import MultiHeadAttention, LayerNorm, PositionWiseFeedForward
 
 class EmbeddingWithPosition(nn.Module):
     def __init__(self, vocab_size, pos_max_len, embedding_dim, drop_rate, shared_parameter, device):
@@ -10,7 +10,8 @@ class EmbeddingWithPosition(nn.Module):
         self.dim_sqrt = torch.sqrt(torch.tensor(embedding_dim))
         self.embedding = shared_parameter
         self.dropout = nn.Dropout(p=drop_rate)
-        self.LN_layer = LayerLorm(d_model=embedding_dim)
+        # self.LN_layer = LayerNorm(d_model=embedding_dim)
+        self.LN_layer = nn.LayerNorm(embedding_dim)
         self.device = device
         self.pos_enc = self.get_pos_encoding(dim=embedding_dim, max_len=pos_max_len).requires_grad_(False) #L, D
         
@@ -38,11 +39,13 @@ class EncoderLayer(nn.Module):
         super(EncoderLayer, self).__init__()        
         self.MHA_layer = MultiHeadAttention(head=head, d_model=d_model, d_k=d_k, d_v=d_v, is_masked=False)
         self.drop1 = nn.Dropout(p=drop_rate)
-        self.LN_layer1 = LayerLorm(d_model=d_model)
+        # self.LN_layer1 = LayerNorm(d_model=d_model)
+        self.LN_layer1 = nn.LayerNorm(d_model)
         
         self.PWFFN_layer = PositionWiseFeedForward(d_model=d_model, d_ff=d_ff)
         self.drop2 = nn.Dropout(p=drop_rate)
-        self.LN_layer2 = LayerLorm(d_model=d_model)
+        # self.LN_layer2 = LayerNorm(d_model=d_model)
+        self.LN_layer2 = nn.LayerNorm(d_model)
 
     def forward(self, x, masked_info):
         """
@@ -72,15 +75,18 @@ class DecoderLayer(nn.Module):
         super(DecoderLayer, self).__init__()
         self.Masked_MHA_layer = MultiHeadAttention(head=head, d_model=d_model, d_k=d_k, d_v=d_v, is_masked=True)
         self.drop1 = nn.Dropout(p=drop_rate)
-        self.LN_layer1 = LayerLorm(d_model=d_model)
+        # self.LN_layer1 = LayerNorm(d_model=d_model)
+        self.LN_layer1 = nn.LayerNorm(d_model)
 
         self.MHA_layer = MultiHeadAttention(head=head, d_model=d_model, d_k=d_k, d_v=d_v, is_masked=False)
         self.drop2 = nn.Dropout(p=drop_rate)
-        self.LN_layer2 = LayerLorm(d_model=d_model)
+        # self.LN_layer2 = LayerNorm(d_model=d_model)
+        self.LN_layer2 = nn.LayerNorm(d_model)
         
         self.PWFFN_layer = PositionWiseFeedForward(d_model=d_model, d_ff=d_ff)
         self.drop3 = nn.Dropout(p=drop_rate)
-        self.LN_layer3 = LayerLorm(d_model=d_model)
+        # self.LN_layer3 = LayerNorm(d_model=d_model)
+        self.LN_layer3 = nn.LayerNorm(d_model)
         
     def forward(self, x, src_tgt_masked_info, tgt_masked_info, encoder_output):
         """

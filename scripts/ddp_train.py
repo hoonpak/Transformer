@@ -23,7 +23,7 @@ from torch.utils.data.distributed import DistributedSampler
 
 def setup(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
+    os.environ['MASTER_PORT'] = '12356'
     torch.manual_seed(42) 
     dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
@@ -59,7 +59,7 @@ def train_ddp(rank, world_size, tokenizer, hyper_params, name, lang, test_datalo
     model = Transformer(N=hyper_params["N"], vocab_size=vocab_size, pos_max_len=info.max_len,
                     d_model=hyper_params["d_model"], head=hyper_params["head"], d_k=hyper_params["d_k"],
                     d_v=hyper_params["d_v"], d_ff=hyper_params["d_ff"], drop_rate=hyper_params["dropout_rate"], device=hyper_params["device"]).to(device)
-    # save_info = torch.load("/home/user19/bag/5.Transformer/scripts/save_model/enfrv0_base_CheckPoint.pth", map_location=device)
+    # save_info = torch.load(f"/home/user19/bag/5.Transformer/scripts/save_model/{name}_CheckPoint.pth", map_location=device)
     # model = save_info['model'].to(device)
     # model.load_state_dict(save_info['model_state_dict'])
     model = DDP(model, device_ids=[rank])
@@ -91,7 +91,7 @@ def train_ddp(rank, world_size, tokenizer, hyper_params, name, lang, test_datalo
     while True:
         train_sampler.set_epoch(epoch)
         for src_data, tgt_data, src_len, tgt_len in train_dataloader:
-            torch.cuda.empty_cache()
+            # torch.cuda.empty_cache()
             token_counts += (sum(src_len) + sum(tgt_len))//2
             src_data = src_data.to(device)
             tgt_data = tgt_data.to(device)
@@ -130,7 +130,7 @@ def train_ddp(rank, world_size, tokenizer, hyper_params, name, lang, test_datalo
                     break
 
             if rank == 0:
-                if (step % 1000 == 0) & (test_flag):
+                if (step % 2500 == 0) & (test_flag):
                     test_cost = 0
                     test_ppl = 0
                     num = 0
@@ -149,8 +149,8 @@ def train_ddp(rank, world_size, tokenizer, hyper_params, name, lang, test_datalo
                     print('='*10, f"Step: {epoch}/{step:<8} Test Loss: {test_cost:<10.4f} Test Ppl: {test_ppl:<8.2f}  Time:{(time.time()-st)/3600:>6.4f} Hour", '='*10)
                     writer.add_scalars('cost', {'test_cost':test_cost}, step)
                     writer.flush()
-                    torch.cuda.empty_cache()
                     model.train()
+                    # torch.cuda.empty_cache()
                     test_flag = False
                     
                 if ((step+1) % 10000 == 0) | ((step) in [98500, 97000, 95500, 94000]):
