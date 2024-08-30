@@ -38,7 +38,8 @@ def train_ddp(rank, world_size, tokenizer, hyper_params, name, lang, test_datalo
     
     file_path = f'../data/{lang}_training_custom_dataset.pt'
     if os.path.exists(file_path):
-        print("load saved dataset")
+        if rank == 0:
+            print("load saved dataset")
         training_dataset = torch.load(file_path)
     else:
         if lang == "ende":
