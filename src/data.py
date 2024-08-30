@@ -31,6 +31,8 @@ class CustomDataset(Dataset):
             tgt_lines = file.readlines()
         
         for src_line, tgt_line in tqdm(zip(src_lines, tgt_lines), desc="data tokenizing & loading"):
+            if (len(src_line.strip()) == 0)|(len(tgt_line.strip()) == 0):
+                continue
             src_tokenized_line = tokenizer.encode(src_line).ids
             tgt_tokenized_line = tokenizer.encode(tgt_line).ids
             if (len(src_tokenized_line) > info.max_len) | (len(tgt_tokenized_line) > info.max_len):
@@ -58,27 +60,45 @@ class CustomENFRDataset(Dataset):
         padded_tgt_sen = tgt_sen + [0]*(info.max_len - tgt_leng + 1) # 129
         return [torch.LongTensor(padded_src_sen), torch.LongTensor(padded_tgt_sen), src_leng, tgt_leng]
     
-    def get_filtered_data_from_text_file(self, src_path, tgt_path):
-        src_file = open(src_path, "r")
-        tgt_file = open(tgt_path, "r")
+    # def get_filtered_data_from_text_file(self, src_path, tgt_path):
+    #     src_file = open(src_path, "r")
+    #     tgt_file = open(tgt_path, "r")
         
-        data_size = 40842333
-        for tmp_idx in tqdm(range(data_size), desc="Filtering..."):
-            src_line = src_file.readline()
-            tgt_line = tgt_file.readline()
-            if len(src_line) == 0:
-                if len(tgt_line) != 0:
-                    print("WARNING! Please make sure the data is well paired.")
-                break
+    #     data_size = 40842333
+    #     for tmp_idx in tqdm(range(data_size), desc="Filtering..."):
+    #         src_line = src_file.readline()
+    #         tgt_line = tgt_file.readline()
+    #         if len(src_line) == 0:
+    #             if len(tgt_line) != 0:
+    #                 print("WARNING! Please make sure the data is well paired.")
+    #             break
+    #         tmp_src_ids = self.tokenizer.encode(src_line).ids
+    #         tmp_tgt_ids = self.tokenizer.encode(tgt_line).ids
+    #         if (len(tmp_src_ids) > info.max_len) | (len(tmp_tgt_ids) > info.max_len) :
+    #             continue                   
+    #         self.src.append(src_line)
+    #         self.tgt.append(tgt_line)
+            
+    #     src_file.close()
+    #     tgt_file.close()
+
+    def get_filtered_data_from_text_file(self, src_path, tgt_path):
+        with open(src_path, "r") as file :
+            src_lines = file.readlines()
+        with open(tgt_path, "r") as file :
+            tgt_lines = file.readlines()
+        
+        total_lines = zip(src_lines, tgt_lines)
+        # data_size = 40842333
+        for src_line, tgt_line in tqdm(total_lines, desc="Filtering..."):
+            if (len(src_line.strip()) == 0)|(len(tgt_line.strip()) == 0):
+                continue
             tmp_src_ids = self.tokenizer.encode(src_line).ids
             tmp_tgt_ids = self.tokenizer.encode(tgt_line).ids
-            if (len(tmp_src_ids) > info.max_len) | (len(tmp_tgt_ids) > info.max_len) :
+            if (len(tmp_src_ids) > 128) | (len(tmp_tgt_ids) > 128) :
                 continue                   
             self.src.append(src_line)
             self.tgt.append(tgt_line)
-            
-        src_file.close()
-        tgt_file.close()
 
 # def collate_fn(batch):
 #     src_sen, tgt_sen, src_len, tgt_len = zip(*batch)
