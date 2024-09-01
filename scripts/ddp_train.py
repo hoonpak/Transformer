@@ -157,21 +157,21 @@ def train_ddp(rank, world_size, tokenizer, hyper_params, name, lang, test_datalo
                 if ((step+1) % 10000 == 0) | ((step) in [98500, 97000, 95500, 94000]):
                     if step in [98500, 97000, 95500, 94000]:
                         torch.save({'step': step,
-                                    'model': model.module,
-                                    'model_state_dict': model.module.state_dict(),
+                                    'model': model,
+                                    'model_state_dict': model.state_dict(),
                                     'optimizer_state_dict': optim.state_dict(),
                                     }, f"./save_model/{step}_{name}_CheckPoint.pth")
                     else:
                         torch.save({'step': step,
-                                    'model': model.module,
-                                    'model_state_dict': model.module.state_dict(),
+                                    'model': model,
+                                    'model_state_dict': model.state_dict(),
                                     'optimizer_state_dict': optim.state_dict(),
-                                    }, f"./save_model/{step}_{name}_CheckPoint.pth")
+                                    }, f"./save_model/{name}_CheckPoint.pth")
         if train_flag:
             if rank == 0:
                 torch.save({'step': step,
-                            'model': model.module,
-                            'model_state_dict': model.module.state_dict(),
+                            'model': model,
+                            'model_state_dict': model.state_dict(),
                             'optimizer_state_dict': optim.state_dict(),
                             }, f"./save_model/{step}_{name}_CheckPoint.pth")
             break
