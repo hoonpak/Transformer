@@ -1,6 +1,7 @@
 import sys, os
 sys.path.append("../src")
 
+import copy
 import info
 from model import Transformer
 from data import CustomDataset
@@ -8,6 +9,7 @@ from data import CustomDataset
 from tokenizers import Tokenizer
 
 import torch
+import torch.distributed as dist
 from torch.utils.data import DataLoader
 
 import numpy as np
@@ -158,37 +160,73 @@ def perplexity(model, test_dataset, device):
     test_ppl /= num
     print('='*10, f"Test Loss: {test_cost:<10.4f} Test Ppl: {test_ppl:<10.2f}", '='*10)
 
+def setup(rank, world_size):
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+    torch.manual_seed(42) 
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="base", choices=["base", "big"])
+    parser.add_argument("--lang", default="ende", choices=["ende", "enfr"])
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--version")
+    parser.add_argument("--avg_ckp", action=argparse.BooleanOptionalAction, help='average check point or not') # --avg_ckp True, --no-avg_ckp False
     option = parser.parse_args()
 
-    name = option.version + "_" + option.model
+    name = option.lang + option.version + "_" + option.model
     hyper_params = getattr(info, f"{option.model}_hyper_params")
     info.device = option.device
 
-    tokenizer_path = "../data/ende_WMT14_Tokenizer.json"
+    tokenizer_path = f"../data/{option.lang}_WMT14_Tokenizer.json"
     tokenizer = Tokenizer.from_file(tokenizer_path)
     vocab_size = tokenizer.get_vocab_size()
 
-    src_test_data_path = "../data/test/test_en.txt"
-    tgt_test_data_path = "../data/test/test_de.txt"
-    test_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_test_data_path, tgt_path=tgt_test_data_path)
+    if option.lang == "ende":
+        src_test_data_path = "../data/test/test_en.txt"
+        tgt_test_data_path = "../data/test/test_de.txt"
+        test_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_test_data_path, tgt_path=tgt_test_data_path)
+    elif option.lang == "enfr":
+        src_test_data_path = "../data/test/test_enfr_en.txt"
+        tgt_test_data_path = "../data/test/test_enfr_fr.txt"
+        test_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_test_data_path, tgt_path=tgt_test_data_path)
     
-    model_info = torch.load(f"./save_model/{name}_CheckPoint.pth", map_location=info.device)
-    model = model_info['model'].to(info.device)
-    model.load_state_dict(model_info['model_state_dict'])
-    model.eval()
+    setup(0,1)
+    if option.avg_ckp :
+        save_points = ["94000", "95500", "97000", "98500", "100000"]
+        model_info = torch.load(f"./save_model/{save_points[0]}_{name}_CheckPoint.pth", map_location=info.device)
+        
+        avg_state_dict = copy.deepcopy(model_info['model_state_dict'])
+        for poi in save_points[1:]:
+            model_info = torch.load(f"./save_model/{poi}_{name}_CheckPoint.pth", map_location=info.device)
+            for key in avg_state_dict:
+                avg_state_dict[key] += model_info['model_state_dict'][key]
 
+        for key in avg_state_dict:
+            avg_state_dict[key] /= 5
+        
+        model = model_info['model'].to(info.device)
+        model.load_state_dict(avg_state_dict)
+        model = model.module
+    else :
+        model_info = torch.load(f"./save_model/{name}_CheckPoint.pth", map_location=info.device)
+        model = model_info['model'].to(info.device)
+        model.load_state_dict(model_info['model_state_dict'])
+        model = model.module
+
+
+    model.eval()
     beam_predict = beam_search(test_dataset.src, model, option.device, beam_size=4)
     beam_bleu_score = bleu_score(beam_predict, test_dataset.tgt)
     print("="*100)
     print(tokenizer.decode(beam_predict[0]))
     print(tokenizer.decode(test_dataset.tgt[0][1:-1]))
     print("="*100)
-    # print(' '.join(tokenizer.decode(beam_predict[-1])))
-    # print(' '.join(tokenizer.decode(test_dataset.tgt[-1][1:-1])))
-    # print("="*50)
+    print(' '.join(tokenizer.decode(beam_predict[-1])))
+    print(' '.join(tokenizer.decode(test_dataset.tgt[-1][1:-1])))
+    print("="*50)
     print(f"{name} beam bleu score : {beam_bleu_score:.2f}")
+    with open(f"{name}_predict.txt", "w") as file:
+        for line in beam_predict:
+            file.write(line + "\n")
