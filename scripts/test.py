@@ -1,7 +1,6 @@
 import sys, os
 sys.path.append("../src")
 
-import copy
 import info
 from model import Transformer
 from data import CustomDataset
@@ -14,6 +13,7 @@ from torch.utils.data import DataLoader
 
 import numpy as np
 
+import copy
 import time
 import argparse
 from tqdm import tqdm
@@ -60,7 +60,8 @@ def beam_search(src_sens, model, device, beam_size, boundary=None):
             beam = [(0.0, [decoder_input])]
             
             completed_sequences = []
-            max_gen_length = round(src_leng*1.5)
+            # max_gen_length = round(src_leng*1.5)
+            max_gen_length = info.max_len
             
             for time_step in range(max_gen_length):
                 new_beam = []
@@ -146,11 +147,11 @@ def perplexity(model, test_dataset, device):
     num = 0
     model.eval()
     test_dataloader = DataLoader(test_dataset, info.batch_size, shuffle=False)
-    loss_function = torch.nn.CrossEntropyLoss().to(device)
+    loss_function = torch.nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
     with torch.no_grad():
         for src_data, tgt_data, src_len, tgt_len in test_dataloader:
-            src_data = src_data.to(info.device)
-            tgt_data = tgt_data.to(info.device)
+            src_data = src_data.to(device)
+            tgt_data = tgt_data.to(device)
             predict = model.forward(src_input=src_data, tgt_input=tgt_data[:,:-1])
             loss = loss_function(predict, tgt_data[:,1:].reshape(-1))
             test_cost += loss.detach().cpu().item()
@@ -162,16 +163,17 @@ def perplexity(model, test_dataset, device):
 
 def setup(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
+    os.environ['MASTER_PORT'] = '12354'
     torch.manual_seed(42) 
     dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="base", choices=["base", "big"])
+    parser.add_argument("--model", default="base", choices=["base", "big", "small_head", "big_head"])
     parser.add_argument("--lang", default="ende", choices=["ende", "enfr"])
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--version")
+    parser.add_argument("--t3", action=argparse.BooleanOptionalAction)
     parser.add_argument("--avg_ckp", action=argparse.BooleanOptionalAction, help='average check point or not') # --avg_ckp True, --no-avg_ckp False
     option = parser.parse_args()
 
@@ -184,9 +186,14 @@ if __name__ == "__main__":
     vocab_size = tokenizer.get_vocab_size()
 
     if option.lang == "ende":
-        src_test_data_path = "../data/test/test_en.txt"
-        tgt_test_data_path = "../data/test/test_de.txt"
-        test_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_test_data_path, tgt_path=tgt_test_data_path)
+        if option.t3:
+            src_test_data_path = "../data/test/test_en_2013.txt"
+            tgt_test_data_path = "../data/test/test_de_2013.txt"
+            test_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_test_data_path, tgt_path=tgt_test_data_path)
+        else:
+            src_test_data_path = "../data/test/test_en.txt"
+            tgt_test_data_path = "../data/test/test_de.txt"
+            test_dataset = CustomDataset(tokenizer=tokenizer, src_path=src_test_data_path, tgt_path=tgt_test_data_path)
     elif option.lang == "enfr":
         src_test_data_path = "../data/test/test_enfr_en.txt"
         tgt_test_data_path = "../data/test/test_enfr_fr.txt"
@@ -195,26 +202,37 @@ if __name__ == "__main__":
     setup(0,1)
     if option.avg_ckp :
         save_points = ["94000", "95500", "97000", "98500", "100000"]
-        model_info = torch.load(f"./save_model/{save_points[0]}_{name}_CheckPoint.pth", map_location=info.device)
+        model_info_0 = torch.load(f"../scripts/save_model/{save_points[0]}_{name}_CheckPoint.pth", map_location=info.device)
+        model_info_1 = torch.load(f"../scripts/save_model/{save_points[1]}_{name}_CheckPoint.pth", map_location=info.device)
+        model_info_2 = torch.load(f"../scripts/save_model/{save_points[2]}_{name}_CheckPoint.pth", map_location=info.device)
+        model_info_3 = torch.load(f"../scripts/save_model/{save_points[3]}_{name}_CheckPoint.pth", map_location=info.device)
+        model_info_4 = torch.load(f"../scripts/save_model/{save_points[4]}_{name}_CheckPoint.pth", map_location=info.device)
         
-        avg_state_dict = copy.deepcopy(model_info['model_state_dict'])
-        for poi in save_points[1:]:
-            model_info = torch.load(f"./save_model/{poi}_{name}_CheckPoint.pth", map_location=info.device)
-            for key in avg_state_dict:
-                avg_state_dict[key] += model_info['model_state_dict'][key]
+        for key in model_info_0['model_state_dict']:
+            model_info_0['model_state_dict'][key] /= 5
+            model_info_0['model_state_dict'][key] += model_info_1['model_state_dict'][key]/5
+            model_info_0['model_state_dict'][key] += model_info_2['model_state_dict'][key]/5
+            model_info_0['model_state_dict'][key] += model_info_3['model_state_dict'][key]/5
+            model_info_0['model_state_dict'][key] += model_info_4['model_state_dict'][key]/5
 
-        for key in avg_state_dict:
-            avg_state_dict[key] /= 5
-        
-        model = model_info['model'].to(info.device)
-        model.load_state_dict(avg_state_dict)
+        model = model_info_0['model'].to("cuda:0")
+        model.load_state_dict(model_info_0['model_state_dict'])
         model = model.module
+        perplexity(model, test_dataset, "cuda:0")
     else :
-        model_info = torch.load(f"./save_model/{name}_CheckPoint.pth", map_location=info.device)
-        model = model_info['model'].to(info.device)
-        model.load_state_dict(model_info['model_state_dict'])
-        model = model.module
-
+        if option.t3:
+            if option.model in ["small_head", "big_head"]:
+                model_info = torch.load(f"./save_model/{name}_CheckPoint.pth", map_location=info.device)
+            else:
+                model_info = torch.load(f"./save_model/100000_{name}_CheckPoint.pth", map_location=info.device)
+            model = model_info['model'].to(info.device)
+            model.load_state_dict(model_info['model_state_dict'])
+            model = model.module
+        else:
+            model_info = torch.load(f"./save_model/100000_{name}_CheckPoint.pth", map_location=info.device)
+            model = model_info['model'].to(info.device)
+            model.load_state_dict(model_info['model_state_dict'])
+            model = model.module
 
     model.eval()
     beam_predict = beam_search(test_dataset.src, model, option.device, beam_size=4)
@@ -223,10 +241,14 @@ if __name__ == "__main__":
     print(tokenizer.decode(beam_predict[0]))
     print(tokenizer.decode(test_dataset.tgt[0][1:-1]))
     print("="*100)
-    print(' '.join(tokenizer.decode(beam_predict[-1])))
-    print(' '.join(tokenizer.decode(test_dataset.tgt[-1][1:-1])))
+    print(tokenizer.decode(beam_predict[-1]))
+    print(tokenizer.decode(test_dataset.tgt[-1][1:-1]))
     print("="*50)
     print(f"{name} beam bleu score : {beam_bleu_score:.2f}")
+    print("="*50)
+    perplexity(model, test_dataset, "cuda:0")
+    print("="*50)
     with open(f"{name}_predict.txt", "w") as file:
         for line in beam_predict:
-            file.write(line + "\n")
+            file.write(tokenizer.decode(line) + "\n")
+    
